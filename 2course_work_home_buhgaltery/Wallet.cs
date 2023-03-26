@@ -18,19 +18,17 @@ namespace _2course_work_home_buhgaltery
         public string Name { get; set; }
         [JsonProperty]
         public double Balance { get; private set; }
+        [JsonProperty]
+        public List<ITransaction> Transactions { get; set; }
 
-        public void Deposit(double amount)
-        {
-
-        }
-
-        public bool Withdraw(double amount)
-        {
-            return false;
-        }
         public void AddTransaction(ITransaction transaction)
         {
+            if (transaction.Category == "")
+                Balance += transaction.Amount;
+            else
+                Balance -= transaction.Amount;
 
+            Transactions.Add(transaction);
         }
         public Wallet(string name, double balance)
         {

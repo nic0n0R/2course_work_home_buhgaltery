@@ -13,14 +13,14 @@ namespace _2course_work_home_buhgaltery
         
         public string Password { get; set; }
         public List<IAccount> Accounts { get; set; }
-        public List<ITransaction> Transactions { get; set; }
+        //public List<ITransaction> Transactions { get; set; }
 
         public User(string name, UserRole role)
         {
             Name = name;
             Role = role;
             Accounts = new List<IAccount>();
-            Transactions = new List<ITransaction>();
+            //Transactions = new List<ITransaction>();
         }
 
         public void AddAccount(IAccount account)
@@ -33,14 +33,14 @@ namespace _2course_work_home_buhgaltery
             Accounts.Remove(account);
         }
 
-        public void AddTransaction(ITransaction transaction)
+        public void AddTransaction(IAccount account, ITransaction transaction)
         {
-            Transactions.Add(transaction);
+            account.Transactions.Add(transaction);
         }
 
         public void RemoveTransaction(ITransaction transaction)
         {
-            Transactions.Remove(transaction);
+            //Transactions.Remove(transaction);
         }
 
         public double GetTotalBalance()

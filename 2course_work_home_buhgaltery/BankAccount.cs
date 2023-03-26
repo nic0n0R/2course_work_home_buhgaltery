@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -18,20 +19,17 @@ namespace _2course_work_home_buhgaltery
         public string Name { get; set; }
         [JsonProperty]
         public double Balance { get; private set; }
-
-        public void Deposit(double amount)
-        {
-
-        }
-
-        public bool Withdraw(double amount)
-        {
-            return false;
-        }
+        [JsonProperty]
+        public List<ITransaction> Transactions { get; set; }
 
         public void AddTransaction(ITransaction transaction)
         {
+            if (transaction.Category == "")
+                Balance += transaction.Amount;
+            else
+                Balance -= transaction.Amount;
 
+            Transactions.Add(transaction);
         }
         public BankAccount(string name, double balance)
         {

@@ -6,6 +6,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -15,32 +16,34 @@ namespace _2course_work_home_buhgaltery.Forms
 {
     public partial class MainForm : Form
     {
-        private User _cur_user;
+        private string _username;
 
         public MainForm()
         {
             InitializeComponent();
         }
 
-        public MainForm(User user)
+        public MainForm(string user)
         {
             InitializeComponent();
-            _cur_user = user;
+            _username = user;
 
-            userNameLabel.Text = _cur_user.Name;
-            RoleLabel.Text = _cur_user.Role.ToString();
+            userNameLabel.Text = _username;
+
+            RoleLabel.Text = DataManager.UserDeserialize().Find(u => u.Name == _username).Role.ToString();
         }
 
         private void MainForm_Load(object sender, EventArgs e)
         {
             // Если родительский аккаунт, то добавляем вкладки для просмотра инфы о всех счетах детей
-            if (_cur_user.Role == UserRole.Parent)
+            if (DataManager.UserDeserialize().Find(u => u.Name == _username).Role == UserRole.Parent)
                 AddChildAccountView();
 
             // инциализация датагрид вью. Настройка колонок
-            InitDataGridView(dataGridView1);
+            InitDataGridView(dgvMain);
+            tabControl1.TabPages[0].Text = userNameLabel.Text;
 
-            FillDataGridView(dataGridView1, _cur_user);
+            FillDataGridView(dgvMain, _username);
         }
 
         private void InitDataGridView(DataGridView dgv)
@@ -49,9 +52,9 @@ namespace _2course_work_home_buhgaltery.Forms
             DataGridViewTextBoxColumn col2 = new DataGridViewTextBoxColumn { HeaderText = "Баланс", ReadOnly = true };
             DataGridViewTextBoxColumn col3 = new DataGridViewTextBoxColumn { HeaderText = "Последняя транзакция", ReadOnly = true };
             DataGridViewTextBoxColumn col4 = new DataGridViewTextBoxColumn { HeaderText = "Всего транзакций", ReadOnly = true };
-            DataGridViewButtonColumn  col5 = new DataGridViewButtonColumn { HeaderText = "Подробности", Text = "Подробнее", UseColumnTextForButtonValue = true };
+            DataGridViewButtonColumn col5 = new DataGridViewButtonColumn { HeaderText = "Подробности", Text = "Подробнее", UseColumnTextForButtonValue = true };
 
-            
+
             dgv.Columns.AddRange(col1, col2, col3, col4, col5);
 
             dgv.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
@@ -63,18 +66,59 @@ namespace _2course_work_home_buhgaltery.Forms
             dgv.CellClick += DataGridView_CellClick;
         }
 
+        private DataGridView getDataGridViewFromTabPage(TabPage tabPage)
+        {
+            foreach (Control control in tabPage.Controls)
+            {
+                if (control is DataGridView dataGridView)
+                {
+                    return dataGridView;
+                }
+            }
+            return null;
+        }
+
         private void DataGridView_CellClick(object sender, DataGridViewCellEventArgs e)
         {
-            if (e.ColumnIndex == 4 && e.RowIndex >= 0)
+            DataGridView dgv = getDataGridViewFromTabPage(tabControl1.SelectedTab);
+
+            if (e.ColumnIndex == 4 && e.RowIndex >= 0 && e.RowIndex != dgv.Rows.Count - 1)
             {
-                string bankName = dataGridView1[1, e.RowIndex].Value.ToString();
-                BankAccountDetails BAD = new BankAccountDetails(_cur_user, bankName);
+                string bankName = dgv[0, e.RowIndex].Value.ToString();
+                string clicked_account_name = "";
+                BankAccountDetails BAD;
+                // если родитель пытается зайти в свой счёт
+                if (RoleLabel.Text == "Parent" && tabControl1.SelectedTab.Text == _username)
+                {
+                    clicked_account_name = DataManager.UserDeserialize()
+                    .Find(a => a.Name == _username).Accounts
+                    .Find(c => c.Name == bankName).Name;
+                    BAD = new BankAccountDetails(tabControl1.SelectedTab.Text, clicked_account_name);
+                }
+                // Если родитель пытается зайти в детский счёт
+                else if (RoleLabel.Text == "Parent" && tabControl1.SelectedTab.Text != _username)
+                {
+                    clicked_account_name = DataManager.UserDeserialize()
+                   .Find(a => a.Name == tabControl1.SelectedTab.Text).Accounts
+                   .Find(c => c.Name == bankName).Name;
+                    BAD = new BankAccountDetails(_username, tabControl1.SelectedTab.Text, clicked_account_name);
+                }
+                // Если ребёнок пытается войти в свой аккаунт
+                else
+                {
+                    clicked_account_name = DataManager.UserDeserialize()
+                    .Find(a => a.Name == _username).Accounts
+                    .Find(c => c.Name == bankName).Name;
+                    BAD = new BankAccountDetails(tabControl1.SelectedTab.Text, clicked_account_name);
+                }
+
                 BAD.ShowDialog();
+                FillDataGridView(dgv, tabControl1.SelectedTab.Text);
             }
         }
 
 
-        private void FillDataGridView(DataGridView dgv, User user)
+        private void FillDataGridView(DataGridView dgv, string user)
         {
             // очищаем предыдущие записи, если таковые имеются
             dgv.Rows.Clear();
@@ -84,30 +128,33 @@ namespace _2course_work_home_buhgaltery.Forms
             FillBankAccounts(dgv, user);
         }
 
-        private void FillWallet(DataGridView dgv, User user)
+        private void FillWallet(DataGridView dgv, string userName)
         {
             var date = DateTime.MinValue;
-
+            var usr = DataManager.UserDeserialize().First(u => u.Name == userName);
             // Если ещё транзакций нет
-            if (user.Transactions.Count != 0)
+
+            if (usr.Accounts[0].Transactions.Count != 0)
             {
-                date = user.Transactions[user.Transactions.Count - 1].Date;
+                date = usr.Accounts[0].Transactions[0].Date;
             }
-            dgv.Rows.Add(user.Accounts[0].Name, user.Accounts[0].Balance, date, user.Transactions.Count);
+            dgv.Rows.Add(usr.Accounts[0].Name, usr.Accounts[0].Balance, date, usr.Accounts[0].Transactions.Count);
 
         }
 
-        private void FillBankAccounts(DataGridView dgv, User user)
+        private void FillBankAccounts(DataGridView dgv, string userName)
         {
             var date = DateTime.MinValue;
 
-            for (int i = 1; i < user.Accounts.Count; i++)
+            var usr = DataManager.UserDeserialize().Find(u => u.Name == userName);
+
+            for (int i = 1; i < usr.Accounts.Count; i++)
             {
-                if (user.Transactions.Count != 0)
+                if (usr.Accounts[i].Transactions.Count != 0)
                 {
-                    date = user.Transactions[user.Transactions.Count - 1].Date;
+                    date = usr.Accounts[i].Transactions[usr.Accounts[i].Transactions.Count - 1].Date;
                 }
-                dgv.Rows.Add(user.Accounts[i].Name, user.Accounts[i].Balance, date, user.Transactions.Count);
+                dgv.Rows.Add(usr.Accounts[i].Name, usr.Accounts[i].Balance, date, usr.Accounts[i].Transactions.Count);
             }
         }
 
@@ -136,11 +183,11 @@ namespace _2course_work_home_buhgaltery.Forms
                 tabControl1.TabPages.Add(newTabPage);
 
                 DataGridView dgv = new DataGridView();
-                dgv.Location = new Point(6,6);
+                dgv.Location = new Point(6, 6);
                 dgv.Size = new Size(806, 405);
 
                 InitDataGridView(dgv);
-                FillDataGridView(dgv, child);
+                FillDataGridView(dgv, child.Name);
 
                 newTabPage.Controls.Add(dgv);
             }
@@ -163,14 +210,36 @@ namespace _2course_work_home_buhgaltery.Forms
                 }
             }
 
+            var user = DataManager.UserDeserialize().Find(u => u.Name == _username);
+
+            if (user.Accounts.Find(a => a.Name == bankAccountName) != null)
+            {
+                MessageBox.Show("Уже существует счёт с таким именем!", "Ошибка", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
             var newBankAccount = new BankAccount(bankAccountName, 0.0);
-            _cur_user.AddAccount(newBankAccount);
-            FillDataGridView(dataGridView1, _cur_user);
-            
+            newBankAccount.Transactions = new List<ITransaction>();
+
+
+            user.AddAccount(newBankAccount);
+
             // сохраняем данные о новом созданном счёте
-            var users = DataManager.UserDeserialize();
-            users.FirstOrDefault(u => u.Name == _cur_user.Name).AddAccount(newBankAccount);
-            DataManager.UserSerialize(users);
+            DataManager.UserSerialize(user);
+
+            FillDataGridView(dgvMain, _username);
+        }
+
+        private void tabControl1_SelectedIndexChanged(object sender, EventArgs e)
+        {
+            if (tabControl1.SelectedIndex != 0)
+            {
+                CreateBankAccountButton.Visible = false;
+            }
+            else
+            {
+                CreateBankAccountButton.Visible = true;
+            }
         }
     }
 }

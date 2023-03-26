@@ -12,7 +12,7 @@ namespace _2course_work_home_buhgaltery
 {
     public static class DataManager
     {
-        public static void UserSerialize(List<User> users)
+        public static void UserSerialize(User user)
         {
             string filePath = "users.json";
             var settings = new JsonSerializerSettings
@@ -20,6 +20,22 @@ namespace _2course_work_home_buhgaltery
                 TypeNameHandling = TypeNameHandling.Auto,
                 Converters = { new AccountConverter() }
             };
+
+            var users = UserDeserialize();
+            
+
+            var cur_user = users.Find(u => u.Name == user.Name);
+
+            // если ещё файла нет, или пользователь не найден
+            if (cur_user == null)
+            {
+                users.Add(user);
+            }
+            else
+            {
+                users[users.IndexOf(cur_user)] = user;
+            }
+
             string newUsersJson = JsonConvert.SerializeObject(users, Formatting.Indented, settings);
             File.WriteAllText(filePath, newUsersJson);
         }
@@ -58,7 +74,8 @@ namespace _2course_work_home_buhgaltery
         }
 
 
-        public static List<string> CategoriesDeserialize() {
+        public static List<string> CategoriesDeserialize()
+        {
 
             string categoriesJsonPath = "categories.json";
             List<string> categories = new List<string>();

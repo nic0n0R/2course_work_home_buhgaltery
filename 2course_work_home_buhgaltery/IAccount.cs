@@ -13,8 +13,8 @@ namespace _2course_work_home_buhgaltery
         /// </summary>
         string Name { get; set; }
         double Balance { get; }
-        void Deposit(double amount);
-        bool Withdraw(double amount);
+
+        List<ITransaction> Transactions { get; set; }
         void AddTransaction(ITransaction transaction);
     }
 }

@@ -23,7 +23,10 @@ namespace _2course_work_home_buhgaltery
 
         private void Authorization_Load(object sender, EventArgs e)
         {
-
+            nameTextBox.TabIndex = 0;
+            passTextBox.TabIndex = 1;
+            loginBtn.TabIndex = 2;
+            regBtn.TabIndex = 3;
         }
 
         private void regBtn_Click(object sender, EventArgs e)
@@ -66,7 +69,7 @@ namespace _2course_work_home_buhgaltery
             }
             else
             {
-                MainForm MF = new MainForm(user);
+                MainForm MF = new MainForm(userName);
                 MF.Show();
                 this.Hide();
             }

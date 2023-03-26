@@ -26,14 +26,20 @@ namespace _2course_work_home_buhgaltery.Forms
             string password = firstPassTextBox.Text;
             string repeatPassword = repeatPassTextBox.Text;
 
-            List<User> users = new List<User>();
+            List<User> users;
 
 
             users = DataManager.UserDeserialize();
 
-            if (users.Any(u => u.Name == userName))
+            if (users.Find(u => u.Name == userName) != null)
             {
                 MessageBox.Show("Пользователь с таким именем уже существует!");
+                return;
+            }
+
+            if (string.IsNullOrEmpty(userName) || string.IsNullOrEmpty(password) || string.IsNullOrEmpty(repeatPassword))
+            {
+                MessageBox.Show("Не все поля заполнены.");
                 return;
             }
 
@@ -53,12 +59,14 @@ namespace _2course_work_home_buhgaltery.Forms
             User newUser = new User(userName, role);
             newUser.Password = password;
 
-            newUser.AddAccount(new Wallet($"{userName}-wallet", 0.0));
-            users.Add(newUser);
+            newUser.AddAccount(new Wallet($"{userName}-Главный кошелёк", 0.0));
+            newUser.Accounts[0].Transactions = new List<ITransaction>();
 
-            DataManager.UserSerialize(users);
+            DataManager.UserSerialize(newUser);
 
             MessageBox.Show("Пользователь успешно зарегистрирован.");
+            this.Close();
+            Application.OpenForms[0].Show();
 
         }
 
@@ -85,7 +93,8 @@ namespace _2course_work_home_buhgaltery.Forms
             if (firstPassTextBox.Text != repeatPassTextBox.Text)
             {
                 wrongPasswordLabel.Visible = true;
-            } else
+            }
+            else
             {
                 wrongPasswordLabel.Visible = false;
             }
